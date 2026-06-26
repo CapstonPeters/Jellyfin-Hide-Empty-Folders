@@ -9,6 +9,18 @@
         <div data-role="content">
             <div class="content-primary">
                 <form id="HideEmptyFoldersConfigForm">
+
+                    <div class="sectionTitle">Libraries</div>
+                    <div class="fieldDescription" style="margin-bottom:0.5em;">
+                        Select which libraries the plugin can clean up. Uncheck a library to exclude it.
+                        If all are checked, new libraries added later are automatically included.
+                    </div>
+                    <div id="LibraryCheckboxes" class="checkboxContainer" style="margin-bottom:1em;">
+                        <div class="fieldDescription">Loading libraries...</div>
+                    </div>
+
+                    <div class="sectionTitle">Options</div>
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input id="AutoCleanup" name="AutoCleanup" type="checkbox" is="emby-checkbox" />
@@ -40,15 +52,6 @@
                         </div>
                     </div>
 
-                    <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="LibraryFilter">Library filter</label>
-                        <input id="LibraryFilter" name="LibraryFilter" type="text" is="emby-input" />
-                        <div class="fieldDescription">
-                            Comma-separated list of library names to process (e.g. "TV Shows, Movies").
-                            Leave empty to process all libraries.
-                        </div>
-                    </div>
-
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -67,32 +70,103 @@
                 pluginUniqueId: 'a8f3d2e1-5b7c-4a9e-8d1f-2c3b4a5e6f7d'
             };
 
+            // Store library data for save
+            var _allLibraries = [];
+
+            function renderLibraryCheckboxes(libraries, enabledIds) {
+                var container = document.querySelector('#LibraryCheckboxes');
+                if (!libraries || libraries.length === 0) {
+                    container.innerHTML = '<div class="fieldDescription">No libraries found. Add a library in Dashboard → Libraries first.</div>';
+                    return;
+                }
+
+                // enabledIds is null/undefined/empty → all enabled by default
+                var allEnabled = !enabledIds || enabledIds.length === 0;
+
+                var html = '';
+                for (var i = 0; i < libraries.length; i++) {
+                    var lib = libraries[i];
+                    var checked = allEnabled || (enabledIds.indexOf(lib.ItemId) !== -1);
+                    html += '<label class="emby-checkbox-label" style="display:block;margin-bottom:0.3em;">';
+                    html += '<input type="checkbox" class="libraryCheckbox" data-itemid="' + lib.ItemId + '"' + (checked ? ' checked' : '') + ' />';
+                    html += '<span>' + escapeHtml(lib.Name) + '</span>';
+                    html += '</label>';
+                }
+                container.innerHTML = html;
+            }
+
+            function escapeHtml(text) {
+                var div = document.createElement('div');
+                div.appendChild(document.createTextNode(text));
+                return div.innerHTML;
+            }
+
+            function getSelectedLibraryIds() {
+                var checkboxes = document.querySelectorAll('.libraryCheckbox');
+                var ids = [];
+                for (var i = 0; i < checkboxes.length; i++) {
+                    if (checkboxes[i].checked) {
+                        ids.push(checkboxes[i].getAttribute('data-itemid'));
+                    }
+                }
+                return ids;
+            }
+
             document.querySelector('#HideEmptyFoldersConfigPage')
                 .addEventListener('pageshow', function() {
                     Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId).then(function(config) {
+
+                    // Fetch plugin config and libraries in parallel
+                    Promise.all([
+                        ApiClient.getPluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId),
+                        ApiClient.getJSON(ApiClient.getUrl('/Library/VirtualFolders'))
+                    ]).then(function(results) {
+                        var config = results[0];
+                        var libraries = results[1];
+
+                        _allLibraries = libraries;
+
                         document.querySelector('#AutoCleanup').checked = config.AutoCleanup;
                         document.querySelector('#HideEmptySeasons').checked = config.HideEmptySeasons;
                         document.querySelector('#HideEmptyCollections').checked = config.HideEmptyCollections;
-                        document.querySelector('#LibraryFilter').value = config.LibraryFilter || '';
+
+                        renderLibraryCheckboxes(libraries, config.EnabledLibraryIds);
+
                         Dashboard.hideLoadingMsg();
+                    }).catch(function(err) {
+                        console.error('Failed to load config:', err);
+                        Dashboard.hideLoadingMsg();
+                        Dashboard.alert('Failed to load configuration. Check browser console for details.');
                     });
                 });
 
             document.querySelector('#HideEmptyFoldersConfigForm')
                 .addEventListener('submit', function(e) {
+                    e.preventDefault();
+
                     Dashboard.showLoadingMsg();
+
                     ApiClient.getPluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId).then(function(config) {
                         config.AutoCleanup = document.querySelector('#AutoCleanup').checked;
                         config.HideEmptySeasons = document.querySelector('#HideEmptySeasons').checked;
                         config.HideEmptyCollections = document.querySelector('#HideEmptyCollections').checked;
-                        config.LibraryFilter = document.querySelector('#LibraryFilter').value;
-                        ApiClient.updatePluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId, config).then(function(result) {
-                            Dashboard.processPluginConfigurationUpdateResult(result);
-                        });
+
+                        var selectedIds = getSelectedLibraryIds();
+
+                        // If all libraries are checked, save as empty (meaning "all").
+                        // This ensures newly added libraries are auto-included.
+                        if (selectedIds.length === _allLibraries.length) {
+                            config.EnabledLibraryIds = [];
+                        } else {
+                            config.EnabledLibraryIds = selectedIds;
+                        }
+
+                        ApiClient.updatePluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId, config)
+                            .then(function(result) {
+                                Dashboard.processPluginConfigurationUpdateResult(result);
+                            });
                     });
 
-                    e.preventDefault();
                     return false;
                 });
         </script>

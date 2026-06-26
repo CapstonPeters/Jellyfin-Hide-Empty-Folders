@@ -132,17 +132,12 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 if (folder is CollectionFolder)
                     continue;
 
-                // Respect library filter
-                if (!string.IsNullOrWhiteSpace(config?.LibraryFilter))
+                // Respect library selection — if EnabledLibraryIds is set,
+                // only process folders belonging to those libraries.
+                if (config?.EnabledLibraryIds is { Count: > 0 })
                 {
-                    var libraryNames = config.LibraryFilter
-                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                        .Select(n => n.Trim())
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                    // Walk up to find the top-level collection folder name
                     var topParent = FindTopLibraryFolder(folder);
-                    if (topParent != null && !libraryNames.Contains(topParent.Name))
+                    if (topParent == null || !config.EnabledLibraryIds.Contains(topParent.Id))
                         continue;
                 }
 

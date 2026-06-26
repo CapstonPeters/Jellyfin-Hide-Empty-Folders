@@ -13,10 +13,10 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool AutoCleanup { get; set; } = true;
 
     /// <summary>
-    /// Comma-separated list of library names to process. Empty = all libraries.
-    /// Example: "Movies, TV Shows"
+    /// Collection folder IDs (library IDs) that the plugin is allowed to process.
+    /// An empty list means ALL libraries are processed.
     /// </summary>
-    public string LibraryFilter { get; set; } = string.Empty;
+    public List<Guid> EnabledLibraryIds { get; set; } = new();
 
     /// <summary>
     /// If true, also hide seasons that have no episodes.
