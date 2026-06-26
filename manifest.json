@@ -4,32 +4,16 @@
     "name": "Hide Empty Folders",
     "owner": "CapstonPeters",
     "overview": "Hides empty folders from Jellyfin library views",
-    "description": "Automatically removes folders with no media files from the Jellyfin library database. Files on disk are NEVER deleted — if media is added later, the folder reappears on the next scan. Configurable per-library filtering and manual trigger available.",
+    "description": "Automatically removes folders with no media files from the Jellyfin library database. Files on disk are NEVER deleted.",
     "category": "General",
     "versions": [
       {
-        "version": "1.0.2.0",
-        "changelog": "Fixed blank settings page — added JavaScript to load/save configuration via Jellyfin ApiClient API.",
+        "version": "1.0.3.0",
+        "changelog": "Fixed scheduled task not appearing in Dashboard. Added config page JavaScript for loading/saving settings.",
         "targetAbi": "10.11.3.0",
-        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.2/Jellyfin.Plugin.HideEmptyFolders-1.0.2.zip",
-        "checksum": "ed830e9ba6c73594dafda20a2781a5cd",
-        "timestamp": "2026-06-26T22:10:00Z"
-      },
-      {
-        "version": "1.0.1.0",
-        "changelog": "Fix embedded config page HTML — plugin settings now visible in Dashboard. Settings: auto-cleanup toggle, empty season/collection toggles, per-library filter.",
-        "targetAbi": "10.11.3.0",
-        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.1/Jellyfin.Plugin.HideEmptyFolders-1.0.1.zip",
-        "checksum": "2fc542e6b0b1c6a981cfeeb5a0f88625",
-        "timestamp": "2026-06-26T21:55:00Z"
-      },
-      {
-        "version": "1.0.0.0",
-        "changelog": "Initial release — auto-hide empty folders after library scans, per-library filtering, manual scheduled task trigger",
-        "targetAbi": "10.11.3.0",
-        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.0/Jellyfin.Plugin.HideEmptyFolders-1.0.0.zip",
-        "checksum": "e4a550093b5ecd2d9e76eedd4e17056b",
-        "timestamp": "2026-06-26T21:40:00Z"
+        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.3/Jellyfin.Plugin.HideEmptyFolders-1.0.3.zip",
+        "checksum": "1062dc128fd3eb14bcfbc2411d1ee528",
+        "timestamp": "2026-06-26T22:15:00Z"
       }
     ]
   }
