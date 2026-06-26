@@ -6,14 +6,15 @@
     "overview": "Hides empty folders from Jellyfin library views",
     "description": "Automatically removes folders with no media files from the Jellyfin library database. Files on disk are NEVER deleted.",
     "category": "General",
+    "thumbImage": "https://raw.githubusercontent.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/main/logo.png",
     "versions": [
       {
-        "version": "1.0.5.0",
-        "changelog": "Config page now shows library checkboxes (fetched from Jellyfin API). Select which libraries to process instead of typing comma-separated names. All checked by default — new libraries are auto-included.",
+        "version": "1.0.6.0",
+        "changelog": "Added plugin logo (neon split-folder design with eye-slash). New library selector checkboxes in config page. Fixed critical CollectionFolder deletion bug.",
         "targetAbi": "10.11.3.0",
-        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.5/Jellyfin.Plugin.HideEmptyFolders-1.0.5.zip",
-        "checksum": "2f83467623f3128d8d5b801a2020b57d",
-        "timestamp": "2026-06-26T22:28:00Z"
+        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.6/Jellyfin.Plugin.HideEmptyFolders-1.0.6.zip",
+        "checksum": "PLACEHOLDER",
+        "timestamp": "2026-06-26T22:55:00Z"
       }
     ]
   }
