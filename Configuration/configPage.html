@@ -1,44 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <title>Hide Empty Folders</title>
 </head>
 <body>
-    <div class="pluginConfigurationPage" data-pluginid="a8f3d2e1-5b7c-4a9e-8d1f-2c3b4a5e6f7d">
-        <h2>Hide Empty Folders</h2>
-        <p>Removes folders from the library that contain no media files. Files on disk are never deleted.</p>
+    <div id="HideEmptyFoldersConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="HideEmptyFoldersConfigForm">
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="AutoCleanup" name="AutoCleanup" type="checkbox" is="emby-checkbox" />
+                            <span>Run automatically after each library scan</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            When enabled, empty folders are hidden automatically after every library scan completes.
+                            Disable if you only want to run cleanup manually from Scheduled Tasks.
+                        </div>
+                    </div>
 
-        <div class="checkboxContainer">
-            <label>
-                <input type="checkbox" is="emby-checkbox" id="AutoCleanup" />
-                <span>Run automatically after each library scan</span>
-            </label>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="HideEmptySeasons" name="HideEmptySeasons" type="checkbox" is="emby-checkbox" />
+                            <span>Also hide empty seasons</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            When enabled, TV show seasons with no episodes are also removed from the library.
+                        </div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="HideEmptyCollections" name="HideEmptyCollections" type="checkbox" is="emby-checkbox" />
+                            <span>Also hide empty collections/box-sets</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            When enabled, collections and box-sets with no items are also removed from the library.
+                        </div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="LibraryFilter">Library filter</label>
+                        <input id="LibraryFilter" name="LibraryFilter" type="text" is="emby-input" />
+                        <div class="fieldDescription">
+                            Comma-separated list of library names to process (e.g. "TV Shows, Movies").
+                            Leave empty to process all libraries.
+                        </div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="fieldDescription" style="margin-top:1.5em;">
+                    <strong>Manual trigger:</strong> Go to <em>Dashboard → Scheduled Tasks → Hide Empty Folders</em> and click the play button.
+                </div>
+            </div>
         </div>
 
-        <div class="checkboxContainer">
-            <label>
-                <input type="checkbox" is="emby-checkbox" id="HideEmptySeasons" />
-                <span>Also hide empty seasons</span>
-            </label>
-        </div>
+        <script type="text/javascript">
+            var HideEmptyFoldersConfig = {
+                pluginUniqueId: 'a8f3d2e1-5b7c-4a9e-8d1f-2c3b4a5e6f7d'
+            };
 
-        <div class="checkboxContainer">
-            <label>
-                <input type="checkbox" is="emby-checkbox" id="HideEmptyCollections" />
-                <span>Also hide empty collections/box-sets</span>
-            </label>
-        </div>
+            document.querySelector('#HideEmptyFoldersConfigPage')
+                .addEventListener('pageshow', function() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId).then(function(config) {
+                        document.querySelector('#AutoCleanup').checked = config.AutoCleanup;
+                        document.querySelector('#HideEmptySeasons').checked = config.HideEmptySeasons;
+                        document.querySelector('#HideEmptyCollections').checked = config.HideEmptyCollections;
+                        document.querySelector('#LibraryFilter').value = config.LibraryFilter || '';
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
 
-        <div class="inputContainer">
-            <label>Library filter (comma-separated, leave empty for all):</label>
-            <input type="text" is="emby-input" id="LibraryFilter" placeholder="e.g. TV Shows, Movies" />
-        </div>
+            document.querySelector('#HideEmptyFoldersConfigForm')
+                .addEventListener('submit', function(e) {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId).then(function(config) {
+                        config.AutoCleanup = document.querySelector('#AutoCleanup').checked;
+                        config.HideEmptySeasons = document.querySelector('#HideEmptySeasons').checked;
+                        config.HideEmptyCollections = document.querySelector('#HideEmptyCollections').checked;
+                        config.LibraryFilter = document.querySelector('#LibraryFilter').value;
+                        ApiClient.updatePluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId, config).then(function(result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
+                    });
 
-        <p class="hint">
-            <strong>Tip:</strong> You can also trigger cleanup manually from
-            <em>Dashboard → Scheduled Tasks → Hide Empty Folders</em>.
-        </p>
+                    e.preventDefault();
+                    return false;
+                });
+        </script>
     </div>
 </body>
 </html>
