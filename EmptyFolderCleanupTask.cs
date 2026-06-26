@@ -68,7 +68,6 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 IncludeItemTypes = FolderKinds,
                 IsVirtualItem = false,
                 Recursive = true,
-                HasAnyProviderId = null,
             };
 
             var folders = _libraryManager.GetItemList(folderQuery);
