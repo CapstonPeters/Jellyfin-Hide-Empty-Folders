@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.1.0",
+        "changelog": "Fix embedded config page HTML — plugin settings now visible in Dashboard. Settings: auto-cleanup toggle, empty season/collection toggles, per-library filter.",
+        "targetAbi": "10.11.3.0",
+        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.1/Jellyfin.Plugin.HideEmptyFolders-1.0.1.zip",
+        "checksum": "2fc542e6b0b1c6a981cfeeb5a0f88625",
+        "timestamp": "2026-06-26T21:55:00Z"
+      },
+      {
         "version": "1.0.0.0",
         "changelog": "Initial release — auto-hide empty folders after library scans, per-library filtering, manual scheduled task trigger",
         "targetAbi": "10.11.3.0",
