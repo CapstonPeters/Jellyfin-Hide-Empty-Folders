@@ -137,7 +137,7 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 if (config?.EnabledLibraryIds is { Count: > 0 })
                 {
                     var topParent = FindTopLibraryFolder(folder);
-                    if (topParent == null || !config.EnabledLibraryIds.Contains(topParent.Id))
+                    if (topParent != null && !config.EnabledLibraryIds.Contains(topParent.Id))
                         continue;
                 }
 
