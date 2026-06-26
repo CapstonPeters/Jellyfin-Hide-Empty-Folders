@@ -8,12 +8,12 @@
     "category": "General",
     "versions": [
       {
-        "version": "1.0.4.0",
-        "changelog": "CRITICAL FIX: Prevented CollectionFolder (library root) deletion. Movies/TV Shows libraries could be removed from Jellyfin when CollectionFolder was incorrectly included in folder types checked for emptiness. Added defensive double-check in deletion loop.",
+        "version": "1.0.5.0",
+        "changelog": "Config page now shows library checkboxes (fetched from Jellyfin API). Select which libraries to process instead of typing comma-separated names. All checked by default — new libraries are auto-included.",
         "targetAbi": "10.11.3.0",
-        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.4/Jellyfin.Plugin.HideEmptyFolders-1.0.4.zip",
-        "checksum": "184fef469dbf7cc2cf406c2f2976e282",
-        "timestamp": "2026-06-26T22:25:00Z"
+        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.5/Jellyfin.Plugin.HideEmptyFolders-1.0.5.zip",
+        "checksum": "2f83467623f3128d8d5b801a2020b57d",
+        "timestamp": "2026-06-26T22:28:00Z"
       }
     ]
   }
