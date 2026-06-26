@@ -25,7 +25,6 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
         BaseItemKind.Series,
         BaseItemKind.Season,
         BaseItemKind.BoxSet,
-        BaseItemKind.CollectionFolder,
         BaseItemKind.Folder,
     };
 
@@ -125,6 +124,12 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
 
                 // Skip if it has media descendants
                 if (foldersWithContent.Contains(folder.Id))
+                    continue;
+
+                // NEVER delete library roots (CollectionFolders) — they are the top-level
+                // containers like "Movies" and "TV Shows". Even if they appear empty,
+                // removing them deletes the entire library from Jellyfin.
+                if (folder is CollectionFolder)
                     continue;
 
                 // Respect library filter
