@@ -1,6 +1,8 @@
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
-using Microsoft.Extensions.Logging;
+using MediaBrowser.Model.Serialization;
+using Jellyfin.Plugin.HideEmptyFolders.Configuration;
 
 namespace Jellyfin.Plugin.HideEmptyFolders;
 
