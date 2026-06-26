@@ -142,9 +142,10 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 }
 
                 // Respect per-type settings
-                if (folder is Season && config is { HideEmptySeasons: false })
+                var kind = folder.GetBaseItemKind();
+                if (kind == BaseItemKind.Season && config is { HideEmptySeasons: false })
                     continue;
-                if (folder is BoxSet && config is { HideEmptyCollections: false })
+                if (kind == BaseItemKind.BoxSet && config is { HideEmptyCollections: false })
                     continue;
 
                 emptyFolders.Add(folder);
@@ -195,13 +196,13 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
     /// <summary>
     /// Walks up the parent chain to find the top-level CollectionFolder.
     /// </summary>
-    private CollectionFolder? FindTopLibraryFolder(BaseItem item)
+    private BaseItem? FindTopLibraryFolder(BaseItem item)
     {
         var current = item;
         while (current != null)
         {
-            if (current is CollectionFolder cf)
-                return cf;
+            if (current.GetBaseItemKind() == BaseItemKind.CollectionFolder)
+                return current;
 
             if (current.ParentId == Guid.Empty)
                 break;
