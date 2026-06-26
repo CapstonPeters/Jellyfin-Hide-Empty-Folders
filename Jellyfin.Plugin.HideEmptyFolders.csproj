@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Jellyfin.Plugin.HideEmptyFolders</RootNamespace>
+    <AssemblyName>Jellyfin.Plugin.HideEmptyFolders</AssemblyName>
+    <Version>1.0.0</Version>
+    <Description>Hides empty folders in Jellyfin library views. Folders containing no media files are removed from the library but not deleted from disk.</Description>
+    <Authors>Jo</Authors>
+    <RepositoryUrl>https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders</RepositoryUrl>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.3">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="10.11.3">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hide Empty Folders</title>
+</head>
+<body>
+    <div class="pluginConfigurationPage" data-pluginid="a8f3d2e1-5b7c-4a9e-8d1f-2c3b4a5e6f7d">
+        <h2>Hide Empty Folders</h2>
+        <p>Removes folders from the library that contain no media files. Files on disk are never deleted.</p>
+
+        <div class="checkboxContainer">
+            <label>
+                <input type="checkbox" is="emby-checkbox" id="AutoCleanup" />
+                <span>Run automatically after each library scan</span>
+            </label>
+        </div>
+
+        <div class="checkboxContainer">
+            <label>
+                <input type="checkbox" is="emby-checkbox" id="HideEmptySeasons" />
+                <span>Also hide empty seasons</span>
+            </label>
+        </div>
+
+        <div class="checkboxContainer">
+            <label>
+                <input type="checkbox" is="emby-checkbox" id="HideEmptyCollections" />
+                <span>Also hide empty collections/box-sets</span>
+            </label>
+        </div>
+
+        <div class="inputContainer">
+            <label>Library filter (comma-separated, leave empty for all):</label>
+            <input type="text" is="emby-input" id="LibraryFilter" placeholder="e.g. TV Shows, Movies" />
+        </div>
+
+        <p class="hint">
+            <strong>Tip:</strong> You can also trigger cleanup manually from
+            <em>Dashboard → Scheduled Tasks → Hide Empty Folders</em>.
+        </p>
+    </div>
+</body>
+</html>

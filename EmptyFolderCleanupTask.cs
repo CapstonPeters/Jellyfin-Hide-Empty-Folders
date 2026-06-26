@@ -1,0 +1,211 @@
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Library;
+using Microsoft.Extensions.Logging;
+
+namespace Jellyfin.Plugin.HideEmptyFolders;
+
+/// <summary>
+/// Runs after every library scan. Finds folders with no media-containing descendants
+/// and removes them from the library database (without touching files on disk).
+/// </summary>
+public class EmptyFolderCleanupTask : ILibraryPostScanTask
+{
+    private readonly ILibraryManager _libraryManager;
+    private readonly ILogger<EmptyFolderCleanupTask> _logger;
+
+    /// <summary>
+    /// Folder item kinds that should be checked for emptiness.
+    /// </summary>
+    private static readonly BaseItemKind[] FolderKinds =
+    {
+        BaseItemKind.Series,
+        BaseItemKind.Season,
+        BaseItemKind.BoxSet,
+        BaseItemKind.CollectionFolder,
+        BaseItemKind.Folder,
+    };
+
+    /// <summary>
+    /// Leaf item kinds that count as "media content".
+    /// A folder is NOT empty if it contains (directly or indirectly) any of these.
+    /// </summary>
+    private static readonly BaseItemKind[] MediaLeafKinds =
+    {
+        BaseItemKind.Episode,
+        BaseItemKind.Movie,
+        BaseItemKind.Audio,
+        BaseItemKind.MusicVideo,
+        BaseItemKind.Video,
+        BaseItemKind.Trailer,
+    };
+
+    public EmptyFolderCleanupTask(
+        ILibraryManager libraryManager,
+        ILogger<EmptyFolderCleanupTask> logger)
+    {
+        _libraryManager = libraryManager;
+        _logger = logger;
+    }
+
+    public Task Run(IProgress<double> progress, CancellationToken cancellationToken)
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (config is { AutoCleanup: false })
+        {
+            _logger.LogDebug("Auto-cleanup disabled in plugin config; skipping");
+            return Task.CompletedTask;
+        }
+
+        progress.Report(0);
+
+        try
+        {
+            // ── Step 1: Get all folder-type items ──────────────────
+            _logger.LogInformation("Scanning for empty folders...");
+
+            var folderQuery = new InternalItemsQuery
+            {
+                IncludeItemTypes = FolderKinds,
+                IsVirtualItem = false,
+                Recursive = true,
+                HasAnyProviderId = null,
+            };
+
+            var folders = _libraryManager.GetItemList(folderQuery);
+            _logger.LogDebug("Found {Count} folder items to check", folders.Count);
+            progress.Report(20);
+
+            // ── Step 2: Find which folders have media descendants ──
+            var foldersWithContent = new HashSet<Guid>();
+
+            // Query ALL leaf media items in the library
+            var mediaQuery = new InternalItemsQuery
+            {
+                IncludeItemTypes = MediaLeafKinds,
+                IsVirtualItem = false,
+                Recursive = true,
+            };
+
+            var mediaItems = _libraryManager.GetItemList(mediaQuery);
+            _logger.LogDebug("Found {Count} media items in library", mediaItems.Count);
+            progress.Report(50);
+
+            // Mark every ancestor of each media item as "has content"
+            foreach (var item in mediaItems)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var parentId = item.ParentId;
+                while (parentId != Guid.Empty)
+                {
+                    foldersWithContent.Add(parentId);
+
+                    // Walk up to the parent
+                    var parent = _libraryManager.GetItemById(parentId);
+                    if (parent == null) break;
+                    parentId = parent.ParentId;
+
+                    // Safety: don't walk up past collection folders
+                    if (parent is CollectionFolder) break;
+                }
+            }
+            progress.Report(70);
+
+            _logger.LogDebug("Found {Count} folders with media content", foldersWithContent.Count);
+
+            // ── Step 3: Delete folders not in the "has content" set ──
+            var emptyFolders = new List<BaseItem>();
+
+            foreach (var folder in folders)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Skip if it has media descendants
+                if (foldersWithContent.Contains(folder.Id))
+                    continue;
+
+                // Respect library filter
+                if (!string.IsNullOrWhiteSpace(config?.LibraryFilter))
+                {
+                    var libraryNames = config.LibraryFilter
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(n => n.Trim())
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                    // Walk up to find the top-level collection folder name
+                    var topParent = FindTopLibraryFolder(folder);
+                    if (topParent != null && !libraryNames.Contains(topParent.Name))
+                        continue;
+                }
+
+                // Respect per-type settings
+                if (folder is Season && config is { HideEmptySeasons: false })
+                    continue;
+                if (folder is BoxSet && config is { HideEmptyCollections: false })
+                    continue;
+
+                emptyFolders.Add(folder);
+            }
+
+            _logger.LogInformation("Removing {Count} empty folders from library", emptyFolders.Count);
+            progress.Report(85);
+
+            var deleteOptions = new DeleteOptions
+            {
+                DeleteFileLocation = false,         // NEVER delete from disk!
+                DeleteFromExternalProvider = false,
+            };
+
+            int removed = 0;
+            foreach (var folder in emptyFolders)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    _logger.LogDebug("Removing empty folder: {Name} ({Path})",
+                        folder.Name, folder.Path);
+                    _libraryManager.DeleteItem(folder, deleteOptions);
+                    removed++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to remove folder: {Name}", folder.Name);
+                }
+            }
+
+            progress.Report(100);
+            _logger.LogInformation("Hide Empty Folders complete: {Removed} folders removed", removed);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Empty folder cleanup was cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during empty folder cleanup");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Walks up the parent chain to find the top-level CollectionFolder.
+    /// </summary>
+    private CollectionFolder? FindTopLibraryFolder(BaseItem item)
+    {
+        var current = item;
+        while (current != null)
+        {
+            if (current is CollectionFolder cf)
+                return cf;
+
+            if (current.ParentId == Guid.Empty)
+                break;
+
+            current = _libraryManager.GetItemById(current.ParentId);
+        }
+
+        return null;
+    }
+}
