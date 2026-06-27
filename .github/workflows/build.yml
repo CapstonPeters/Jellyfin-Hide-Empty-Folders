@@ -28,8 +28,9 @@ jobs:
           mkdir -p publish
           cp bin/Release/net9.0/Jellyfin.Plugin.HideEmptyFolders.dll publish/
           cp thumb.png publish/
+          cp meta.json publish/
           cd publish
-          zip ../Jellyfin.Plugin.HideEmptyFolders.zip Jellyfin.Plugin.HideEmptyFolders.dll thumb.png
+          zip ../Jellyfin.Plugin.HideEmptyFolders.zip Jellyfin.Plugin.HideEmptyFolders.dll thumb.png meta.json
           echo "CHECKSUM=$(md5sum ../Jellyfin.Plugin.HideEmptyFolders.zip | cut -d' ' -f1)" >> $GITHUB_ENV
 
       - name: Upload build artifact

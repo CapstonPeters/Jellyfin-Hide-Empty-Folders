@@ -1,0 +1,6 @@
+{
+  "name": "Hide Empty Folders",
+  "description": "Automatically hides empty folders from Jellyfin library views without deleting files.",
+  "version": "1.0.10",
+  "imagePath": "thumb.png"
+}
