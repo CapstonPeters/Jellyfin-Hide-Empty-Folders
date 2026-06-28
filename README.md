@@ -40,7 +40,7 @@ Open **Dashboard → Plugins → Hide Empty Folders → Settings**.
 
 | Setting | What it does |
 |---|---|
-| **Libraries** | Checkboxes for each of your libraries. Only checked libraries are processed. All checked by default — new libraries are included automatically. |
+| **Libraries** | Checkboxes for each of your libraries. Only checked libraries are processed. By default, only TV Show libraries are checked — enable others explicitly if you want Movies, Music, etc. cleaned too. |
 | **Run automatically** | Runs cleanup after every library scan. Turn off if you only want to trigger it manually. |
 | **Hide empty seasons** | TV seasons with zero episodes are removed from view. |
 | **Hide empty collections** | Box sets and collections with no items are removed from view. |
@@ -62,6 +62,17 @@ After a library scan completes (or you trigger it manually), the plugin:
 The plugin uses `DeleteFileLocation = false` — folder entries are removed from Jellyfin's database only. Your files stay exactly where they are.
 
 Collection folders (the top-level "Movies", "TV Shows" containers) are never touched.
+
+---
+
+## What to expect
+
+**Jellyfin is the party that adds empty folders.** The plugin only removes them from the library database — it never touches files on disk.
+
+- **If a show is added to an empty folder:** Jellyfin's real-time monitoring (or scheduled scan) picks up the new file, re-adds the previously-removed empty folder structure to the library, then the plugin removes it again within ~10 seconds. The folder may briefly reappear and vanish — this is normal.
+- **If you run a manual library scan:** The plugin runs immediately after the scan completes and cleans up any empty folders.
+- **If you trigger the scheduled task** (Dashboard → Scheduled Tasks → Hide Empty Folders): It runs the same cleanup on demand.
+- **Files on disk are never deleted.** The plugin uses `DeleteFileLocation = false` and skips CollectionFolder (library root) items entirely.
 
 ---
 
