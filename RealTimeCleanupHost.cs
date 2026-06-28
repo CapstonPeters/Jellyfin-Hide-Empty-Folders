@@ -6,13 +6,16 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.HideEmptyFolders;
 
 /// <summary>
-/// Listens for real-time item additions (file watcher, partial scans) and runs
+/// Listens for real-time library changes (ItemAdded, ItemRemoved) and runs
 /// empty folder cleanup on a debounced timer. This covers the gap that
 /// ILibraryPostScanTask leaves — it only fires on full library scans, but
-/// empty folders can also be added through real-time monitoring.
+/// items can be added or removed through real-time monitoring, partial scans,
+/// or direct API calls without triggering a full scan.
 ///
-/// During a full scan, ILibraryManager.IsScanRunning is true and this handler
-/// defers to ILibraryPostScanTask to avoid duplicate work.
+/// The debounce (10s) coalesces rapid-fire events during bulk operations
+/// into a single cleanup run. ILibraryPostScanTask handles the end-of-scan
+/// case; this handler handles everything else. The cleanup is idempotent,
+/// so occasional overlap doesn't cause harm.
 /// </summary>
 public sealed class RealTimeCleanupHost : IHostedService, IDisposable
 {
@@ -24,9 +27,8 @@ public sealed class RealTimeCleanupHost : IHostedService, IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// How long to wait after the last folder item addition before running cleanup.
-    /// Keeps resetting as items pour in during a bulk scan, then fires once after
-    /// things settle. This prevents running cleanup hundreds of times during a scan.
+    /// How long to wait after the last library change before running cleanup.
+    /// Keeps resetting as events pour in, then fires once after things settle.
     /// </summary>
     private static readonly TimeSpan DebounceInterval = TimeSpan.FromSeconds(10);
 
@@ -42,37 +44,41 @@ public sealed class RealTimeCleanupHost : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _libraryManager.ItemAdded += OnItemAdded;
-        _logger.LogInformation("Real-time empty folder cleanup listener started");
+        _libraryManager.ItemAdded += OnLibraryChanged;
+        _libraryManager.ItemRemoved += OnLibraryChanged;
+        _logger.LogInformation("Real-time empty folder cleanup listener started (ItemAdded + ItemRemoved)");
         return Task.CompletedTask;
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _libraryManager.ItemAdded -= OnItemAdded;
+        _libraryManager.ItemAdded -= OnLibraryChanged;
+        _libraryManager.ItemRemoved -= OnLibraryChanged;
         DisposeTimer();
         _logger.LogInformation("Real-time empty folder cleanup listener stopped");
         return Task.CompletedTask;
     }
 
-    private void OnItemAdded(object? sender, ItemChangeEventArgs e)
+    /// <summary>
+    /// Called on every item addition or removal. Applies to ALL item types —
+    /// a deleted episode can leave a season empty, a deleted season can leave
+    /// a series empty, etc. The debounce timer coalesces these into a single
+    /// cleanup after activity settles.
+    ///
+    /// We do NOT check IsScanRunning because Jellyfin sets it to true even for
+    /// partial scans triggered by real-time monitoring, which would block this
+    /// handler entirely. Instead, we just always run the debounced cleanup.
+    /// ILibraryPostScanTask provides the definitive end-of-scan pass, and this
+    /// handler catches everything in between. The cleanup is idempotent.
+    /// </summary>
+    private void OnLibraryChanged(object? sender, ItemChangeEventArgs e)
     {
-        // We only care about folder-type items — a new empty show/season/folder
-        if (e.Item is not Folder)
-            return;
+        _logger.LogDebug("Library change detected: {Action} {Name} ({Kind})",
+            e.Item.IsFileProtocol ? "file" : "folder",
+            e.Item.Name,
+            e.Item.GetBaseItemKind());
 
-        // During a full scan, ILibraryPostScanTask will handle cleanup.
-        // Running here too would be redundant (and potentially conflicting).
-        if (_libraryManager.IsScanRunning)
-        {
-            _logger.LogDebug("Scan in progress — real-time handler deferring to post-scan task");
-            return;
-        }
-
-        _logger.LogDebug("Folder added via real-time monitoring: {Name} ({Path})",
-            e.Item.Name, e.Item.Path);
-
-        // Debounce: keep resetting the timer as more items arrive.
+        // Debounce: keep resetting the timer as more changes arrive.
         // Once the flood stops, fire once after DebounceInterval.
         lock (_timerLock)
         {
@@ -123,7 +129,8 @@ public sealed class RealTimeCleanupHost : IHostedService, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        _libraryManager.ItemAdded -= OnItemAdded;
+        _libraryManager.ItemAdded -= OnLibraryChanged;
+        _libraryManager.ItemRemoved -= OnLibraryChanged;
         DisposeTimer();
     }
 }
