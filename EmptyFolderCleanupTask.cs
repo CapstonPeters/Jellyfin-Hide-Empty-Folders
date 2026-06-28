@@ -89,6 +89,9 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 IncludeItemTypes = FolderKinds,
                 IsVirtualItem = false,
                 Recursive = true,
+                AncestorIds = effectiveLibraryIds.Count > 0
+                    ? effectiveLibraryIds.ToArray()
+                    : null,
             };
 
             var folders = _libraryManager.GetItemList(folderQuery);
@@ -98,12 +101,18 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
             // ── Step 2: Find which folders have media descendants ──
             var foldersWithContent = new HashSet<Guid>();
 
-            // Query ALL leaf media items in the library
+            // Query leaf media items, scoped to the relevant libraries only.
+            // Without AncestorIds, this would pull every movie/episode/song
+            // in the entire Jellyfin instance — thousands of items causing
+            // get_OfficialRatingForComparison() spam during comparison.
             var mediaQuery = new InternalItemsQuery
             {
                 IncludeItemTypes = MediaLeafKinds,
                 IsVirtualItem = false,
                 Recursive = true,
+                AncestorIds = effectiveLibraryIds.Count > 0
+                    ? effectiveLibraryIds.ToArray()
+                    : null,
             };
 
             var mediaItems = _libraryManager.GetItemList(mediaQuery);
