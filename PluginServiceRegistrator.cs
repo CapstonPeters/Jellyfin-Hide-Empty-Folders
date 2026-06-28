@@ -14,12 +14,15 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     /// <inheritdoc />
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
-        // Critical: registers EmptyFolderCleanupTask as ILibraryPostScanTask so it
-        // runs automatically after every full library scan.
-        serviceCollection.AddSingleton<ILibraryPostScanTask, EmptyFolderCleanupTask>();
+        // Register EmptyFolderCleanupTask as a singleton so it can be resolved
+        // both by concrete type (RealTimeCleanupHost) and by interface
+        // (Jellyfin's ILibraryPostScanTask discovery).
+        serviceCollection.AddSingleton<EmptyFolderCleanupTask>();
+        serviceCollection.AddSingleton<ILibraryPostScanTask>(
+            sp => sp.GetRequiredService<EmptyFolderCleanupTask>());
 
-        // Handles real-time folder additions (file watcher, partial scans) that
-        // bypass ILibraryPostScanTask. Debounces cleanup to avoid redundant work.
+        // Handles real-time folder additions/deletions (file watcher, partial scans)
+        // that bypass ILibraryPostScanTask. Debounces cleanup to avoid redundant work.
         serviceCollection.AddSingleton<IHostedService, RealTimeCleanupHost>();
     }
 }
