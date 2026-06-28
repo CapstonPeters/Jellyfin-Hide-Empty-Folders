@@ -6,6 +6,8 @@
 
 A Jellyfin plugin that keeps your library clean. Empty folders — seasons with no episodes, box sets with no items, vacant series folders — are removed from the library view automatically. Nothing is ever deleted from disk.
 
+[![Listed on JellyWatch Hub](https://jellywatch.app/hub/hide-empty-folders/badge.svg)](https://jellywatch.app/hub/hide-empty-folders)
+
 ---
 
 ## Installation
