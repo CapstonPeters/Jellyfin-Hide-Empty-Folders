@@ -63,6 +63,24 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
 
         try
         {
+            // ── Resolve which libraries to process ──────────────────
+            // When EnabledLibraryIds is empty (fresh install or user checked all),
+            // default to only TV Show (tvshows) libraries to avoid accidentally
+            // cleaning up Movies, Music, or other media libraries.
+            HashSet<Guid> effectiveLibraryIds;
+            if (config?.EnabledLibraryIds is { Count: > 0 })
+            {
+                effectiveLibraryIds = new HashSet<Guid>(config.EnabledLibraryIds);
+                _logger.LogDebug("Using {Count} explicitly configured library IDs", effectiveLibraryIds.Count);
+            }
+            else
+            {
+                effectiveLibraryIds = GetTvShowLibraryIds();
+                _logger.LogInformation(
+                    "No libraries explicitly configured — defaulting to {Count} TV Show library(s)",
+                    effectiveLibraryIds.Count);
+            }
+
             // ── Step 1: Get all folder-type items ──────────────────
             _logger.LogInformation("Scanning for empty folders...");
 
@@ -132,14 +150,11 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 if (folder is CollectionFolder)
                     continue;
 
-                // Respect library selection — if EnabledLibraryIds is set,
-                // only process folders belonging to those libraries.
-                if (config?.EnabledLibraryIds is { Count: > 0 })
-                {
-                    var topParent = FindTopLibraryFolder(folder);
-                    if (topParent != null && !config.EnabledLibraryIds.Contains(topParent.Id))
-                        continue;
-                }
+                // Respect library selection — only process folders
+                // belonging to the effective library set.
+                var topParent = FindTopLibraryFolder(folder);
+                if (topParent != null && !effectiveLibraryIds.Contains(topParent.Id))
+                    continue;
 
                 // Respect per-type settings
                 var kind = folder.GetBaseItemKind();
@@ -191,6 +206,34 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Returns the IDs of all CollectionFolders whose CollectionType is "tvshows".
+    /// Used as the default library filter when no libraries are explicitly configured.
+    /// </summary>
+    private HashSet<Guid> GetTvShowLibraryIds()
+    {
+        var tvIds = new HashSet<Guid>();
+
+        var query = new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { BaseItemKind.CollectionFolder },
+            IsVirtualItem = false,
+        };
+
+        var collectionFolders = _libraryManager.GetItemList(query);
+        foreach (var folder in collectionFolders)
+        {
+            if (folder is CollectionFolder cf
+                && string.Equals(cf.CollectionType, "tvshows", StringComparison.OrdinalIgnoreCase))
+            {
+                tvIds.Add(cf.Id);
+                _logger.LogDebug("Default-enabled TV Show library: {Name} ({Id})", cf.Name, cf.Id);
+            }
+        }
+
+        return tvIds;
     }
 
     /// <summary>

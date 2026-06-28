@@ -12,8 +12,8 @@
 
                     <div class="sectionTitle">Libraries</div>
                     <div class="fieldDescription" style="margin-bottom:0.5em;">
-                        Select which libraries the plugin can clean up. Uncheck a library to exclude it.
-                        If all are checked, new libraries added later are automatically included.
+                        Select which libraries the plugin can clean up. By default, only TV Show libraries
+                        are enabled. Check additional libraries to include them. Uncheck a library to exclude it.
                     </div>
                     <div id="LibraryCheckboxes" class="checkboxContainer" style="margin-bottom:1em;">
                         <div class="fieldDescription">Loading libraries...</div>
@@ -80,13 +80,20 @@
                     return;
                 }
 
-                // enabledIds is null/undefined/empty → all enabled by default
-                var allEnabled = !enabledIds || enabledIds.length === 0;
+                // When EnabledLibraryIds is empty (fresh install / old config),
+                // default to enabling only TV Show (tvshows) libraries.
+                var useDefaults = !enabledIds || enabledIds.length === 0;
 
                 var html = '';
                 for (var i = 0; i < libraries.length; i++) {
                     var lib = libraries[i];
-                    var checked = allEnabled || (enabledIds.indexOf(lib.ItemId) !== -1);
+                    var checked;
+                    if (useDefaults) {
+                        // Default: only tvshows type
+                        checked = (lib.CollectionType || '').toLowerCase() === 'tvshows';
+                    } else {
+                        checked = enabledIds.indexOf(lib.ItemId) !== -1;
+                    }
                     html += '<label class="emby-checkbox-label" style="display:block;margin-bottom:0.3em;">';
                     html += '<input type="checkbox" class="libraryCheckbox" data-itemid="' + lib.ItemId + '"' + (checked ? ' checked' : '') + ' />';
                     html += '<span>' + escapeHtml(lib.Name) + '</span>';
@@ -151,15 +158,9 @@
                         config.HideEmptySeasons = document.querySelector('#HideEmptySeasons').checked;
                         config.HideEmptyCollections = document.querySelector('#HideEmptyCollections').checked;
 
-                        var selectedIds = getSelectedLibraryIds();
-
-                        // If all libraries are checked, save as empty (meaning "all").
-                        // This ensures newly added libraries are auto-included.
-                        if (selectedIds.length === _allLibraries.length) {
-                            config.EnabledLibraryIds = [];
-                        } else {
-                            config.EnabledLibraryIds = selectedIds;
-                        }
+                        // Always save the actual selected library IDs.
+                        // An empty list means "no libraries selected" (or defaults applied).
+                        config.EnabledLibraryIds = getSelectedLibraryIds();
 
                         ApiClient.updatePluginConfiguration(HideEmptyFoldersConfig.pluginUniqueId, config)
                             .then(function(result) {

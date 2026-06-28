@@ -14,7 +14,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
     /// <summary>
     /// Collection folder IDs (library IDs) that the plugin is allowed to process.
-    /// An empty list means ALL libraries are processed.
+    /// An empty list means "use defaults" — only TV Show (tvshows) libraries are processed.
     /// </summary>
     public List<Guid> EnabledLibraryIds { get; set; } = new();
 
