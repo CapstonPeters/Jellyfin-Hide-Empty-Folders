@@ -93,7 +93,13 @@ public sealed class RealTimeCleanupHost : IHostedService, IDisposable
         {
             _logger.LogDebug("Running debounced real-time empty folder cleanup");
 
-            var cleanupTask = _serviceProvider.GetRequiredService<EmptyFolderCleanupTask>();
+            var cleanupTask = (EmptyFolderCleanupTask?)_serviceProvider.GetService(typeof(EmptyFolderCleanupTask));
+            if (cleanupTask == null)
+            {
+                _logger.LogWarning("Could not resolve EmptyFolderCleanupTask from DI — real-time cleanup skipped");
+                return;
+            }
+
             var progress = new Progress<double>();
             cleanupTask.Run(progress, CancellationToken.None).GetAwaiter().GetResult();
         }
