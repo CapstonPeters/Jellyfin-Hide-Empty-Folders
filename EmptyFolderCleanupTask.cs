@@ -226,7 +226,7 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
         foreach (var folder in collectionFolders)
         {
             if (folder is CollectionFolder cf
-                && string.Equals(cf.CollectionType, "tvshows", StringComparison.OrdinalIgnoreCase))
+                && cf.CollectionType == Jellyfin.Data.Enums.CollectionType.tvshows)
             {
                 tvIds.Add(cf.Id);
                 _logger.LogDebug("Default-enabled TV Show library: {Name} ({Id})", cf.Name, cf.Id);
