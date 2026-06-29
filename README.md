@@ -65,6 +65,8 @@ The plugin uses `DeleteFileLocation = false` — folder entries are removed from
 
 Collection folders (the top-level "Movies", "TV Shows" containers) are never touched.
 
+**Pseudo season folders are preserved.** Jellyfin can create virtual season entries for TV libraries where episodes live in a flat folder (no real season subfolders). These pseudo seasons are left intact — only seasons whose parent series genuinely has zero media content are removed.
+
 ---
 
 ## What to expect
