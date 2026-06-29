@@ -5,7 +5,6 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.HideEmptyFolders.Configuration;
-using System.Linq;
 
 namespace Jellyfin.Plugin.HideEmptyFolders;
 
@@ -178,46 +177,36 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
             progress.Report(75);
 
             // ── Step 4: Verify candidates are truly empty ──────────
-            // The media-ancestor walk (Step 2) can miss virtual/pseudo folders
-            // (e.g., Season entries that Jellyfin creates for shows without
-            // season subfolders). These folders have child episodes but the
-            // Episode→parent chain may point to the Series instead of the
-            // Season. A folder with ANY children is not empty.
-            var candidateIds = candidateFolders.Select(f => f.Id).ToArray();
-            var foldersWithChildren = new HashSet<Guid>();
+            // The media-ancestor walk (Step 2) can miss virtual/pseudo seasons
+            // that Jellyfin creates for shows without season subfolders.
+            // In those cases Episode→ParentId may point directly to Series,
+            // bypassing the Season, so the Season never gets marked.
+            //
+            // Rule: a Season is never truly empty if its parent Series has content.
+            // No DB queries needed — just check the foldersWithContent set from Step 2.
+            var trulyEmpty = new List<BaseItem>();
 
-            if (candidateIds.Length > 0)
+            foreach (var folder in candidateFolders)
             {
-                // Single bulk query: find all items whose parent is a candidate.
-                // SkipDeserialization avoids loading full item data — we only
-                // need ParentId to know which candidates have children.
-                var childQuery = new InternalItemsQuery
+                // Season with a non-empty parent Series is NOT empty
+                if (folder is Season)
                 {
-                    ParentIds = candidateIds,
-                    SkipDeserialization = true,
-                };
-                var children = _libraryManager.GetItemList(childQuery);
-                foreach (var child in children)
-                {
-                    if (child.ParentId != Guid.Empty)
-                        foldersWithChildren.Add(child.ParentId);
+                    var parentSeries = _libraryManager.GetItemById(folder.ParentId);
+                    if (parentSeries != null && foldersWithContent.Contains(parentSeries.Id))
+                    {
+                        _logger.LogDebug(
+                            "Preserving virtual season {Name} — parent series {Series} has content",
+                            folder.Name, parentSeries.Name);
+                        continue;
+                    }
                 }
 
-                _logger.LogDebug(
-                    "Child check: {Candidates} candidates, {WithKids} have children from {TotalKids} total children",
-                    candidateIds.Length,
-                    foldersWithChildren.Count,
-                    children.Count);
+                trulyEmpty.Add(folder);
             }
 
-            var trulyEmpty = candidateFolders
-                .Where(f => !foldersWithChildren.Contains(f.Id))
-                .ToList();
-
             _logger.LogInformation(
-                "Candidates: {Candidate}, with children: {WithKids}, truly empty: {TrulyEmpty}",
+                "Candidates: {Candidate}, truly empty: {TrulyEmpty}",
                 candidateFolders.Count,
-                foldersWithChildren.Count,
                 trulyEmpty.Count);
 
             // ── Step 5: Delete truly-empty folders ─────────────────
