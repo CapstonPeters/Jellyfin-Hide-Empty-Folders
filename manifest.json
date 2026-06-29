@@ -9,6 +9,14 @@
     "thumbImage": "https://raw.githubusercontent.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/main/logo.png",
     "versions": [
       {
+        "version": "1.0.17.0",
+        "changelog": "Preserve virtual/pseudo seasons that have child episodes — no longer deletes Season entries from folderless show libraries.",
+        "targetAbi": "10.11.3.0",
+        "sourceUrl": "https://github.com/CapstonPeters/Jellyfin-Hide-Empty-Folders/releases/download/v1.0.17/Jellyfin.Plugin.HideEmptyFolders-1.0.17.zip",
+        "checksum": "9a70507bfe62e31c698835872b99ecbb",
+        "timestamp": "2026-06-29T20:30:00Z"
+      },
+      {
         "version": "1.0.16.0",
         "changelog": "Scoped queries to relevant libraries only (fixes get_OfficialRatingForComparison spam). Added recursive cleanup guard.",
         "targetAbi": "10.11.3.0",
