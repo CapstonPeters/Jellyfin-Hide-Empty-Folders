@@ -5,6 +5,7 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.HideEmptyFolders.Configuration;
+using System.Linq;
 
 namespace Jellyfin.Plugin.HideEmptyFolders;
 
@@ -142,8 +143,9 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
 
             _logger.LogDebug("Found {Count} folders with media content", foldersWithContent.Count);
 
-            // ── Step 3: Delete folders not in the "has content" set ──
-            var emptyFolders = new List<BaseItem>();
+            // ── Step 3: Identify candidate empty folders ────────────
+            // Folders with no media descendants are candidates for deletion.
+            var candidateFolders = new List<BaseItem>();
 
             foreach (var folder in folders)
             {
@@ -153,14 +155,11 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 if (foldersWithContent.Contains(folder.Id))
                     continue;
 
-                // NEVER delete library roots (CollectionFolders) — they are the top-level
-                // containers like "Movies" and "TV Shows". Even if they appear empty,
-                // removing them deletes the entire library from Jellyfin.
+                // NEVER delete library roots (CollectionFolders)
                 if (folder is CollectionFolder)
                     continue;
 
-                // Respect library selection — only process folders
-                // belonging to the effective library set.
+                // Respect library selection
                 var topParent = FindTopLibraryFolder(folder);
                 if (topParent != null && !effectiveLibraryIds.Contains(topParent.Id))
                     continue;
@@ -172,10 +171,49 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
                 if (kind == BaseItemKind.BoxSet && config is { HideEmptyCollections: false })
                     continue;
 
-                emptyFolders.Add(folder);
+                candidateFolders.Add(folder);
             }
 
-            _logger.LogInformation("Removing {Count} empty folders from library", emptyFolders.Count);
+            _logger.LogDebug("Found {Count} candidate empty folders", candidateFolders.Count);
+            progress.Report(75);
+
+            // ── Step 4: Verify candidates are truly empty ──────────
+            // The media-ancestor walk (Step 2) can miss virtual/pseudo folders
+            // (e.g., Season entries that Jellyfin creates for shows without
+            // season subfolders). These folders have child episodes but the
+            // Episode→parent chain may point to the Series instead of the
+            // Season. A folder with ANY children is not empty.
+            var candidateIds = candidateFolders.Select(f => f.Id).ToArray();
+            var foldersWithChildren = new HashSet<Guid>();
+
+            if (candidateIds.Length > 0)
+            {
+                // Query each parent individually with Limit=1 for efficiency.
+                // Bulk ParentIds query pulls full results which is wasteful.
+                foreach (var candidateId in candidateIds)
+                {
+                    var singleChildQuery = new InternalItemsQuery
+                    {
+                        ParentId = candidateId,
+                        Limit = 1,
+                    };
+                    if (_libraryManager.GetItemList(singleChildQuery).Count > 0)
+                        foldersWithChildren.Add(candidateId);
+                }
+            }
+
+            var trulyEmpty = candidateFolders
+                .Where(f => !foldersWithChildren.Contains(f.Id))
+                .ToList();
+
+            _logger.LogInformation(
+                "Candidates: {Candidate}, with children: {WithKids}, truly empty: {TrulyEmpty}",
+                candidateFolders.Count,
+                foldersWithChildren.Count,
+                trulyEmpty.Count);
+
+            // ── Step 5: Delete truly-empty folders ─────────────────
+            _logger.LogInformation("Removing {Count} empty folders from library", trulyEmpty.Count);
             progress.Report(85);
 
             var deleteOptions = new DeleteOptions
@@ -185,7 +223,7 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
             };
 
             int removed = 0;
-            foreach (var folder in emptyFolders)
+            foreach (var folder in trulyEmpty)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
