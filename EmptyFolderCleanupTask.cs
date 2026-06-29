@@ -188,18 +188,26 @@ public class EmptyFolderCleanupTask : ILibraryPostScanTask
 
             if (candidateIds.Length > 0)
             {
-                // Query each parent individually with Limit=1 for efficiency.
-                // Bulk ParentIds query pulls full results which is wasteful.
-                foreach (var candidateId in candidateIds)
+                // Single bulk query: find all items whose parent is a candidate.
+                // SkipDeserialization avoids loading full item data — we only
+                // need ParentId to know which candidates have children.
+                var childQuery = new InternalItemsQuery
                 {
-                    var singleChildQuery = new InternalItemsQuery
-                    {
-                        ParentId = candidateId,
-                        Limit = 1,
-                    };
-                    if (_libraryManager.GetItemList(singleChildQuery).Count > 0)
-                        foldersWithChildren.Add(candidateId);
+                    ParentIds = candidateIds,
+                    SkipDeserialization = true,
+                };
+                var children = _libraryManager.GetItemList(childQuery);
+                foreach (var child in children)
+                {
+                    if (child.ParentId != Guid.Empty)
+                        foldersWithChildren.Add(child.ParentId);
                 }
+
+                _logger.LogDebug(
+                    "Child check: {Candidates} candidates, {WithKids} have children from {TotalKids} total children",
+                    candidateIds.Length,
+                    foldersWithChildren.Count,
+                    children.Count);
             }
 
             var trulyEmpty = candidateFolders
